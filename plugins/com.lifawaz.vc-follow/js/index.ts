@@ -1,6 +1,7 @@
 /// <reference types="@valenced/types" />
 
-import { lookupModules } from "@valenced/modules/finders";
+import { lookupModules, waitForModules } from "@valenced/modules/finders";
+import * as discordFinders from "@valenced/discord/utils/modules/finders";
 import { withName, withProps } from "@valenced/modules/finders/filters";
 import { after, before, instead } from "@valenced/patcher";
 
@@ -207,48 +208,97 @@ function patchMenus() {
   }
   if (!patched) log("No matching profile menu exports found");
 }
-function findCommandText(value: any, depth = 0): string | null {
-  if (depth > 3 || value == null) return null;
-  if (typeof value === "string") return value;
-  if (typeof value !== "object") return null;
-  for (const key of ["content", "message", "text", "messageContent"]) {
-    if (typeof value[key] === "string") return value[key];
-  }
-  for (const key of ["message", "payload", "options", "data"]) {
-    const found = findCommandText(value[key], depth + 1);
-    if (found != null) return found;
-  }
+type CommandArg = { name: string; value: unknown };
+type CommandContext = { channel?: { id: string } };
+const BUILT_INS_PATH = "modules/application_commands/ApplicationCommandBuiltIns.tsx";
+let commandRegistry: AnyRecord[] | null = null;
+const queuedCommands = new Map<string, AnyRecord>();
+let commandWatchers: Array<() => void> = [];
+let commandWatching = false;
+
+function commandEntry(name: string, description: string, options: AnyRecord[], execute: (args: CommandArg[], context: CommandContext) => void) {
+  return {
+    id: `lifawaz-vc-follow-${name}`, applicationId: "-1", type: 1, inputType: 0,
+    name, displayName: name, untranslatedName: name,
+    description, displayDescription: description, untranslatedDescription: description,
+    options: options.map(option => ({ ...option, displayName: option.name, displayDescription: option.description, required: option.required ?? false })),
+    execute(args: CommandArg[], context: CommandContext) { execute(args ?? [], context ?? {}); },
+  };
+}
+function extractBuiltIns(mod: AnyRecord): AnyRecord[] | null {
+  if (Array.isArray(mod?.BUILT_IN_COMMANDS)) return mod.BUILT_IN_COMMANDS;
+  if (Array.isArray(mod?.default?.BUILT_IN_COMMANDS)) return mod.default.BUILT_IN_COMMANDS;
   return null;
 }
-function patchTextCommands() {
-  let count = 0;
+function stopCommandWatchers() {
+  for (const stop of commandWatchers.splice(0)) { try { stop(); } catch {} }
+  commandWatching = false;
+}
+function adoptCommandRegistry(value: unknown) {
+  if (commandRegistry || !Array.isArray(value)) return false;
+  commandRegistry = value as AnyRecord[];
+  for (const [id, entry] of queuedCommands) {
+    const stale = commandRegistry.findIndex(command => command?.id === id);
+    if (stale >= 0) commandRegistry.splice(stale, 1);
+    commandRegistry.push(entry);
+    log("Registered native built-in command", entry.name);
+  }
+  queuedCommands.clear();
+  stopCommandWatchers();
+  return true;
+}
+function watchCommandRegistry() {
+  if (commandWatching || commandRegistry) return;
+  commandWatching = true;
   try {
-    for (const [mod] of lookupModules(withProps("sendMessage") as any)) {
-      const candidate = mod as AnyRecord;
-      if (!candidate || typeof candidate !== "object" || typeof candidate.sendMessage !== "function") continue;
-      const unpatch = instead(candidate, "sendMessage" as any, (args: any[], original: Function) => {
-        const text = args.map(arg => findCommandText(arg)).find(value => value != null)?.trim();
-        if (!text) return original(...args);
-        if (text === "/unvcf") {
-          followingUserId = null;
-          targetChannelId = null;
-          manualHold = false;
-          log("Following stopped by /unvcf");
-          return undefined;
-        }
-        if (text === "/vcf" || text.startsWith("/vcf ")) {
-          const id = text.slice(4).trim();
-          if (/^\d{15,22}$/.test(id)) follow(id);
-          else log("Usage: /vcf USER_ID");
-          return undefined;
-        }
-        return original(...args);
-      });
-      cleanups.push(unpatch);
-      count++;
+    const finder = discordFinders as AnyRecord;
+    if (typeof finder.getModuleWithImportedPath === "function") {
+      const unsubscribe = finder.getModuleWithImportedPath(BUILT_INS_PATH, (exports: AnyRecord) => adoptCommandRegistry(extractBuiltIns(exports)));
+      if (typeof unsubscribe === "function") commandWatchers.push(unsubscribe);
     }
-  } catch (e) { log("Text command patch failed", String(e)); }
-  log(count ? "Text commands enabled: /vcf USER_ID and /unvcf" : "No sendMessage module found for text commands");
+  } catch (error) { log("Command path lookup failed", String(error)); }
+  if (commandRegistry) return stopCommandWatchers();
+  try {
+    const filter = withProps("BUILT_IN_COMMANDS");
+    for (const [exports] of lookupModules(filter as any)) {
+      if (adoptCommandRegistry(extractBuiltIns(exports as AnyRecord))) return;
+    }
+    const unsubscribe = waitForModules(filter as any, (exports: AnyRecord) => adoptCommandRegistry(extractBuiltIns(exports)));
+    if (typeof unsubscribe === "function") commandWatchers.push(() => unsubscribe());
+  } catch (error) { log("Command registry watcher failed", String(error)); }
+}
+function registerBuiltInCommand(entry: AnyRecord) {
+  const id = String(entry.id);
+  if (commandRegistry) {
+    const stale = commandRegistry.findIndex(command => command?.id === id);
+    if (stale >= 0) commandRegistry.splice(stale, 1);
+    commandRegistry.push(entry);
+    log("Registered native built-in command", entry.name);
+  } else {
+    queuedCommands.set(id, entry);
+    watchCommandRegistry();
+  }
+  return () => {
+    queuedCommands.delete(id);
+    if (commandRegistry) {
+      const index = commandRegistry.findIndex(command => command?.id === id);
+      if (index >= 0) commandRegistry.splice(index, 1);
+    }
+    if (!queuedCommands.size) stopCommandWatchers();
+  };
+}
+function registerCommands() {
+  cleanups.push(registerBuiltInCommand(commandEntry("vcf", "Follow a user between voice channels.", [
+    { name: "user_id", description: "Discord user ID to follow", type: 3, required: true },
+  ], args => {
+    const id = String(args.find(arg => arg?.name === "user_id")?.value ?? "").trim();
+    if (/^\\d{15,22}$/.test(id)) follow(id);
+    else log("Invalid user ID. Use /vcf user_id:<Discord user ID>");
+  })));
+  cleanups.push(registerBuiltInCommand(commandEntry("unvcf", "Stop following the current user.", [], () => {
+    followingUserId = null; targetChannelId = null; manualHold = false;
+    log("Following stopped by /unvcf");
+  })));
 }
 function patchManualDisconnect() {
   const actions = voiceActions();
@@ -271,7 +321,7 @@ export default plugin({
     apiRef = api;
     active = true;
     patchMenus();
-    patchTextCommands();
+    registerCommands();
     patchManualDisconnect();
     try {
       const flux = api.unscoped.discord.flux;
