@@ -229,17 +229,17 @@ function patchTextCommands() {
       const unpatch = instead(candidate, "sendMessage" as any, (args: any[], original: Function) => {
         const text = args.map(arg => findCommandText(arg)).find(value => value != null)?.trim();
         if (!text) return original(...args);
-        const match = text.match(/^\\/vcf(?:\\s+(\\d{15,22}))?\\s*$/i);
-        if (match) {
-          if (match[1]) follow(match[1]);
-          else log("Usage: /vcf USER_ID");
-          return undefined;
-        }
-        if (/^\\/unvcf\\s*$/i.test(text)) {
+        if (text === "/unvcf") {
           followingUserId = null;
           targetChannelId = null;
           manualHold = false;
           log("Following stopped by /unvcf");
+          return undefined;
+        }
+        if (text === "/vcf" || text.startsWith("/vcf ")) {
+          const id = text.slice(4).trim();
+          if (/^\\d{15,22}$/.test(id)) follow(id);
+          else log("Usage: /vcf USER_ID");
           return undefined;
         }
         return original(...args);
