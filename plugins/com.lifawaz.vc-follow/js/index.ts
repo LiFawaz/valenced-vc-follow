@@ -111,6 +111,14 @@ function onVoiceUpdate(payload: AnyRecord) {
         if (target) joinChannel(target, "external disconnect");
       }
     }
+    // After an intentional disconnect, wait until the user chooses a VC themselves.
+    // Once they join one, resume following and immediately move to the target's VC.
+    if (id === currentUserId() && channelId && manualHold && followingUserId) {
+      manualHold = false;
+      log("Manual hold cleared after you joined a voice channel");
+      const target = voiceChannelFor(followingUserId);
+      if (target) joinChannel(target, "resume after manual VC join");
+    }
     if (id === followingUserId) {
       targetChannelId = channelId;
       if (channelId) joinChannel(channelId, "target voice update");
