@@ -21,7 +21,7 @@ jobs:
 
       - name: Check manifest JSON
         run: |
-          node -e 'const fs=require("fs"); const p="plugins/com.lifawaz.vc-follow/manifest.json"; const m=JSON.parse(fs.readFileSync(p,"utf8")); if(m.format!==1 || !m.id || !m.version || !m.dist?.script) process.exit(1); console.log("Manifest OK:", m.id, m.version)'
+          node -e 'const fs=require("fs"); const p="plugins/com.lifawaz.vc-follow/manifest.json"; const m=JSON.parse(fs.readFileSync(p,"utf8")); if(m.format!==1 || !m.id || !m.version || m.dist?.script!=="index.js" || !m.dependencies?.["valenced.api"]) process.exit(1); console.log("Manifest OK:", m.id, m.version)'
 
       - name: Get official Valenced build template
         run: git clone --depth 1 https://github.com/Valenced/valenced-plugin-template.git valenced-template
@@ -39,3 +39,25 @@ jobs:
 
       - name: Verify bundle exists
         run: test -s "valenced-template/plugins/com.lifawaz.vc-follow/build/js/index.js"
+
+      - name: Assemble installable JS-only plugin ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p package
+          cp "plugins/com.lifawaz.vc-follow/manifest.json" package/manifest.json
+          cp "valenced-template/plugins/com.lifawaz.vc-follow/build/js/index.js" package/index.js
+          node -e 'const m=require("./package/manifest.json"); if(m.dist.script!=="index.js") process.exit(1);'
+          version="$(node -p 'require("./package/manifest.json").version')"
+          plugin_id="$(node -p 'require("./package/manifest.json").id')"
+          mkdir -p dist
+          (cd package && zip -q "../dist/${plugin_id}@${version}.zip" manifest.json index.js)
+          unzip -t "dist/${plugin_id}@${version}.zip"
+
+      - name: Upload installable ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: com.lifawaz.vc-follow-installable-zip
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 30
