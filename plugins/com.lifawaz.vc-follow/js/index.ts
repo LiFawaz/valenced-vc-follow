@@ -12,12 +12,45 @@ let followingUserId: string | null = null;
 let targetChannelId: string | null = null;
 let manualHold = false;
 let lastJoinAt = 0;
+let lastJoinChannelId: string | null = null;
+let lastJoinFailureNoticeAt = 0;
+let lastNotice = "";
 let apiRef: any;
+const RETRY_MS = 500;
+const NOTICE_COOLDOWN_MS = 5000;
 const cleanups: Array<() => void> = [];
 const CONNECT = 1n << 20n;
 
 function log(...args: unknown[]) {
   try { console.log("[vc-follow]", ...args); } catch {}
+}
+function notify(message: string) {
+  log(message);
+  // Use a Valenced notification API if this build exposes one; console remains the fallback.
+  try {
+    const candidates = [
+      apiRef?.toast,
+      apiRef?.notifications,
+      apiRef?.unscoped?.toast,
+      apiRef?.unscoped?.notifications,
+    ];
+    for (const target of candidates) {
+      if (!target) continue;
+      if (typeof target === "function") { target(message); return; }
+      for (const method of ["showToast", "show", "success", "error", "info", "push"]) {
+        if (typeof target[method] === "function") {
+          target[method](message);
+          return;
+        }
+      }
+    }
+  } catch {}
+}
+function noticeOnce(message: string) {
+  if (lastNotice === message && Date.now() - lastJoinFailureNoticeAt < NOTICE_COOLDOWN_MS) return;
+  lastNotice = message;
+  lastJoinFailureNoticeAt = Date.now();
+  notify(message);
 }
 function moduleWith(...props: string[]): AnyRecord | null {
   try {
@@ -68,13 +101,13 @@ function voiceChannelFor(userId: string): string | null {
 function joinChannel(channelId: string, reason: string) {
   if (!active || !followingUserId || manualHold || !channelId) return;
   if (voiceChannelFor(currentUserId() ?? "") === channelId) return;
-  if (Date.now() - lastJoinAt < 1800) return;
+  if (Date.now() - lastJoinAt < RETRY_MS) return;
   const channel = channelStore()?.getChannel?.(channelId);
   const permissions = moduleWith("can");
   if (channel && permissions?.can) {
     try {
       if (!permissions.can(CONNECT, channel)) {
-        log("Cannot follow: CONNECT permission denied", channelId);
+        noticeOnce("Can't join VC: you don't have permission to connect. Still following; I'll retry automatically.");
         return;
       }
     } catch {
@@ -87,10 +120,12 @@ function joinChannel(channelId: string, reason: string) {
     return;
   }
   lastJoinAt = Date.now();
+  lastJoinChannelId = channelId;
   try {
     actions.selectVoiceChannel(channelId);
     log("Join requested", channelId, reason);
   } catch (e) {
+    noticeOnce("Can't join VC: Discord rejected the join request. The channel may be full or you may lack permission; still following and retrying.");
     log("Join request failed", String(e));
   }
 }
@@ -139,6 +174,8 @@ function follow(userId: string) {
   if (followingUserId === userId) {
     followingUserId = null;
     targetChannelId = null;
+    lastJoinChannelId = null;
+    lastNotice = "";
     manualHold = false;
     log("Following stopped");
     return;
@@ -351,9 +388,18 @@ export default plugin({
         log("Detected target voice channel by polling", target);
         joinChannel(target, "poll");
       } else if (target && targetChannelId === target) {
-        if (voiceChannelFor(currentUserId() ?? "") !== target && Date.now() - lastJoinAt > 5000) joinChannel(target, "poll retry");
+        const myChannel = voiceChannelFor(currentUserId() ?? "");
+        if (myChannel !== target && Date.now() - lastJoinAt >= RETRY_MS) {
+          // Discord often exposes no explicit "channel full" error. After a join
+          // request has had time to settle, report the failure without guessing
+          // whether capacity or permissions caused it.
+          if (lastJoinChannelId === target && Date.now() - lastJoinAt >= 2000) {
+            noticeOnce("Can't join VC: Discord hasn't let me join. The channel may be full or your permissions may block you. Still following and retrying.");
+          }
+          joinChannel(target, "poll retry");
+        }
       }
-    }, 1500);
+    }, RETRY_MS);
     try {
       const flux = api.unscoped.discord.flux;
       if (typeof flux.onAnyFluxEventDispatched === "function") {
@@ -377,6 +423,8 @@ export default plugin({
     if (followPoll) { clearInterval(followPoll); followPoll = null; }
     followingUserId = null;
     targetChannelId = null;
+    lastJoinChannelId = null;
+    lastNotice = "";
     manualHold = false;
     for (const cleanup of cleanups.splice(0)) {
       try { cleanup(); } catch {}
