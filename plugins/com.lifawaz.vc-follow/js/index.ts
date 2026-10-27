@@ -292,8 +292,16 @@ function registerCommands() {
     { name: "user_id", description: "Discord user ID to follow", type: 3, required: true },
   ], args => {
     const id = String(args.find(arg => arg?.name === "user_id")?.value ?? "").trim();
-    if (/^\\d{15,22}$/.test(id)) follow(id);
-    else log("Invalid user ID. Use /vcf user_id:<Discord user ID>");
+    if (/^\d{15,22}$/.test(id)) {
+      if (id === currentUserId()) {
+        log("ERROR: You cannot follow your own user ID.");
+        return;
+      }
+      follow(id);
+      if (!targetChannelId) log("Following is armed, but the target is not currently in a voice channel. Waiting for their next voice update.");
+    } else {
+      log("ERROR: Invalid user ID. Use /vcf user_id:<Discord user ID>.");
+    }
   })));
   cleanups.push(registerBuiltInCommand(commandEntry("unvcf", "Stop following the current user.", [], () => {
     followingUserId = null; targetChannelId = null; manualHold = false;
