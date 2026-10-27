@@ -238,7 +238,7 @@ function patchTextCommands() {
         }
         if (text === "/vcf" || text.startsWith("/vcf ")) {
           const id = text.slice(4).trim();
-          if (/^\\d{15,22}$/.test(id)) follow(id);
+          if (/^\d{15,22}$/.test(id)) follow(id);
           else log("Usage: /vcf USER_ID");
           return undefined;
         }
