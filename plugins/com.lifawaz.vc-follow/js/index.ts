@@ -2,7 +2,7 @@
 
 import { lookupModules } from "@valenced/modules/finders";
 import { withName, withProps } from "@valenced/modules/finders/filters";
-import { after, before } from "@valenced/patcher";
+import { after, before, instead } from "@valenced/patcher";
 
 type AnyRecord = Record<string, any>;
 
@@ -207,6 +207,49 @@ function patchMenus() {
   }
   if (!patched) log("No matching profile menu exports found");
 }
+function findCommandText(value: any, depth = 0): string | null {
+  if (depth > 3 || value == null) return null;
+  if (typeof value === "string") return value;
+  if (typeof value !== "object") return null;
+  for (const key of ["content", "message", "text", "messageContent"]) {
+    if (typeof value[key] === "string") return value[key];
+  }
+  for (const key of ["message", "payload", "options", "data"]) {
+    const found = findCommandText(value[key], depth + 1);
+    if (found != null) return found;
+  }
+  return null;
+}
+function patchTextCommands() {
+  let count = 0;
+  try {
+    for (const [mod] of lookupModules(withProps("sendMessage") as any)) {
+      const candidate = mod as AnyRecord;
+      if (!candidate || typeof candidate !== "object" || typeof candidate.sendMessage !== "function") continue;
+      const unpatch = instead(candidate, "sendMessage" as any, (args: any[], original: Function) => {
+        const text = args.map(arg => findCommandText(arg)).find(value => value != null)?.trim();
+        if (!text) return original(...args);
+        const match = text.match(/^\\/vcf(?:\\s+(\\d{15,22}))?\\s*$/i);
+        if (match) {
+          if (match[1]) follow(match[1]);
+          else log("Usage: /vcf USER_ID");
+          return undefined;
+        }
+        if (/^\\/unvcf\\s*$/i.test(text)) {
+          followingUserId = null;
+          targetChannelId = null;
+          manualHold = false;
+          log("Following stopped by /unvcf");
+          return undefined;
+        }
+        return original(...args);
+      });
+      cleanups.push(unpatch);
+      count++;
+    }
+  } catch (e) { log("Text command patch failed", String(e)); }
+  log(count ? "Text commands enabled: /vcf USER_ID and /unvcf" : "No sendMessage module found for text commands");
+}
 function patchManualDisconnect() {
   const actions = voiceActions();
   if (!actions) return;
@@ -228,6 +271,7 @@ export default plugin({
     apiRef = api;
     active = true;
     patchMenus();
+    patchTextCommands();
     patchManualDisconnect();
     try {
       const flux = api.unscoped.discord.flux;
