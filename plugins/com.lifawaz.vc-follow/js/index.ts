@@ -158,7 +158,7 @@ function addProfileMenuEntry(mod: AnyRecord, key: string, component: Function) {
   const unpatch = after(mod, key as any, (result: any) => {
     const userId = menuUserId;
     menuUserId = "";
-    if (!result?.props || !/^\\d{15,22}$/.test(userId) || userId === currentUserId()) return result;
+    if (!result?.props || !/^\d{15,22}$/.test(userId) || userId === currentUserId()) return result;
     const React = apiRef?.unscoped?.react?.React ?? apiRef?.unscoped?.react;
     const RN = apiRef?.unscoped?.react?.native?.ReactNative ?? apiRef?.unscoped?.react?.native;
     if (!React?.createElement) return result;
