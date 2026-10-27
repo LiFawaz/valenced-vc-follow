@@ -138,46 +138,74 @@ function follow(userId: string) {
   log("Following started", userId);
   if (targetChannelId) joinChannel(targetChannelId, "follow start");
 }
-function addProfileMenuEntry(mod: AnyRecord, key: string) {
-  const component = mod?.[key];
-  if (typeof component !== "function") return;
-  const unpatch = after(mod, key, (result: any) => {
-    if (!result?.props) return result;
-    const props = result.props ?? {};
-    const userId = String(props.userId ?? props.user?.id ?? props.user?.userId ?? props.member?.userId ?? "");
-    if (!/^\d{15,22}$/.test(userId) || userId === currentUserId()) return result;
+function actionSheetRow(): any {
+  try {
+    for (const [mod] of lookupModules(withProps("ActionSheetRow") as any, { returnNamespace: true } as any)) {
+      const row = (mod as AnyRecord)?.ActionSheetRow ?? (mod as AnyRecord)?.default;
+      if (typeof row === "function") return row;
+    }
+  } catch {}
+  return null;
+}
+function addProfileMenuEntry(mod: AnyRecord, key: string, component: Function) {
+  if (!mod || typeof mod[key] !== "function") return;
+  let menuUserId = "";
+  const capture = before(mod, key as any, (args: any[]) => {
+    const props = args?.[0] ?? {};
+    menuUserId = String(props.userId ?? props.user?.id ?? props.user?.userId ?? props.member?.userId ?? props.userInfo?.id ?? "");
+    return args;
+  });
+  const unpatch = after(mod, key as any, (result: any) => {
+    const userId = menuUserId;
+    menuUserId = "";
+    if (!result?.props || !/^\\d{15,22}$/.test(userId) || userId === currentUserId()) return result;
     const React = apiRef?.unscoped?.react?.React ?? apiRef?.unscoped?.react;
     const RN = apiRef?.unscoped?.react?.native?.ReactNative ?? apiRef?.unscoped?.react?.native;
-    if (!React?.createElement || !RN?.Pressable || !RN?.Text) return result;
-    const button = React.createElement(
-      RN.Pressable,
-      {
-        key: "vc-follow-entry",
-        onPress: () => follow(userId),
-        style: { paddingHorizontal: 16, paddingVertical: 12 },
-        accessibilityRole: "button",
-        accessibilityLabel: "Follow VC",
-      },
-      React.createElement(RN.Text, { style: { color: "#FFFFFF", fontSize: 16 } }, followingUserId === userId ? "Stop following VC" : "Follow VC"),
-    );
-    const children = props.children;
-    // Add at the end of the user menu; exact placement depends on Discord's menu component.
-    props.children = Array.isArray(children) ? [...children, button] : children == null ? [button] : [children, button];
-    return result;
+    if (!React?.createElement) return result;
+    const Row = actionSheetRow();
+    const entry = Row
+      ? React.createElement(Row, {
+          key: "vc-follow-entry",
+          label: followingUserId === userId ? "Stop following VC" : "Follow VC",
+          onPress: () => follow(userId),
+        })
+      : RN?.Pressable && RN?.Text
+        ? React.createElement(RN.Pressable, {
+            key: "vc-follow-entry",
+            onPress: () => follow(userId),
+            style: { paddingHorizontal: 16, paddingVertical: 12 },
+            accessibilityRole: "button",
+            accessibilityLabel: "Follow VC",
+          }, React.createElement(RN.Text, { style: { color: "#FFFFFF", fontSize: 16 } }, followingUserId === userId ? "Stop following VC" : "Follow VC"))
+        : null;
+    if (!entry) return result;
+    const children = result.props.children;
+    const nextChildren = Array.isArray(children) ? [...children, entry] : children == null ? [entry] : [children, entry];
+    try {
+      return React.cloneElement ? React.cloneElement(result, { children: nextChildren }) : (result.props.children = nextChildren, result);
+    } catch {
+      return result;
+    }
   });
-  cleanups.push(unpatch);
+  cleanups.push(capture, unpatch);
 }
 function patchMenus() {
   const names = ["UserContextMenu", "GuildMemberUserContextMenu", "NativeUserContextMenu", "UserProfileBottomSheetContextMenu"];
+  let patched = 0;
   for (const name of names) {
     try {
-      for (const [mod] of lookupModules(withName(name) as any)) {
-        const exports = mod as AnyRecord;
-        const key = typeof exports === "function" ? "default" : Object.keys(exports ?? {}).find(k => typeof exports[k] === "function");
-        if (key) addProfileMenuEntry(exports, key);
+      for (const [exports] of lookupModules(withName(name) as any, { returnNamespace: true } as any)) {
+        const mod = exports as AnyRecord;
+        if (!mod || typeof mod !== "object") continue;
+        const key = typeof mod.default === "function" ? "default" : Object.keys(mod).find(k => typeof mod[k] === "function");
+        if (!key) continue;
+        addProfileMenuEntry(mod, key, mod[key]);
+        patched++;
+        log("Profile menu patched", name, key);
       }
-    } catch {}
+    } catch (e) { log("Menu patch failed", name, String(e)); }
   }
+  if (!patched) log("No matching profile menu exports found");
 }
 function patchManualDisconnect() {
   const actions = voiceActions();
