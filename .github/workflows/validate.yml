@@ -1,0 +1,41 @@
+name: Validate Valenced plugin
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out plugin source
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Check manifest JSON
+        run: |
+          node -e 'const fs=require("fs"); const p="plugins/com.lifawaz.vc-follow/manifest.json"; const m=JSON.parse(fs.readFileSync(p,"utf8")); if(m.format!==1 || !m.id || !m.version || !m.dist?.script) process.exit(1); console.log("Manifest OK:", m.id, m.version)'
+
+      - name: Get official Valenced build template
+        run: git clone --depth 1 https://github.com/Valenced/valenced-plugin-template.git valenced-template
+
+      - name: Copy plugin into template
+        run: cp -R "plugins/com.lifawaz.vc-follow" "valenced-template/plugins/com.lifawaz.vc-follow"
+
+      - name: Install build dependencies
+        working-directory: valenced-template
+        run: bun install
+
+      - name: Build JavaScript bundle
+        working-directory: valenced-template
+        run: bun run build com.lifawaz.vc-follow
+
+      - name: Verify bundle exists
+        run: test -s "valenced-template/plugins/com.lifawaz.vc-follow/build/js/index.js"
