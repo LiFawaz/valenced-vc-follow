@@ -125,7 +125,9 @@ function onVoiceUpdate(payload: AnyRecord) {
   }
 }
 function follow(userId: string) {
-  if (!userId || userId === currentUserId()) return;
+  const me = currentUserId();
+  if (!userId) { log("ERROR: /vcf received an empty user ID."); return; }
+  if (me && userId === me) { log("ERROR: You cannot follow your own user ID."); return; }
   if (followingUserId === userId) {
     followingUserId = null;
     targetChannelId = null;
@@ -136,8 +138,9 @@ function follow(userId: string) {
   followingUserId = userId;
   manualHold = false;
   targetChannelId = voiceChannelFor(userId);
-  log("Following started", userId);
+  log("Following started", userId, "current user:", me ?? "NOT FOUND", "voice store:", voiceStore() ? "found" : "NOT FOUND", "voice actions:", typeof voiceActions()?.selectVoiceChannel === "function" ? "found" : "NOT FOUND");
   if (targetChannelId) joinChannel(targetChannelId, "follow start");
+  else log("Target voice channel not found yet; polling for voice-state changes.");
 }
 function actionSheetRow(): any {
   try {
@@ -215,6 +218,7 @@ let commandRegistry: AnyRecord[] | null = null;
 const queuedCommands = new Map<string, AnyRecord>();
 let commandWatchers: Array<() => void> = [];
 let commandWatching = false;
+let followPoll: ReturnType<typeof setInterval> | null = null;
 
 function commandEntry(name: string, description: string, options: AnyRecord[], execute: (args: CommandArg[], context: CommandContext) => void) {
   return {
@@ -331,6 +335,17 @@ export default plugin({
     patchMenus();
     registerCommands();
     patchManualDisconnect();
+    followPoll = setInterval(() => {
+      if (!active || !followingUserId || manualHold) return;
+      const target = voiceChannelFor(followingUserId);
+      if (target && target !== targetChannelId) {
+        targetChannelId = target;
+        log("Detected target voice channel by polling", target);
+        joinChannel(target, "poll");
+      } else if (target && targetChannelId === target) {
+        if (voiceChannelFor(currentUserId() ?? "") !== target && Date.now() - lastJoinAt > 5000) joinChannel(target, "poll retry");
+      }
+    }, 1500);
     try {
       const flux = api.unscoped.discord.flux;
       if (typeof flux.onAnyFluxEventDispatched === "function") {
@@ -351,6 +366,7 @@ export default plugin({
   },
   stop() {
     active = false;
+    if (followPoll) { clearInterval(followPoll); followPoll = null; }
     followingUserId = null;
     targetChannelId = null;
     manualHold = false;
