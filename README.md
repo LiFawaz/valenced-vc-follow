@@ -1,34 +1,51 @@
 # VC Follow
 
-A small Valenced plugin that keeps up with someone in Discord voice chat.
+A simple plugin for Valenced that follows someone between Discord voice channels, so you don't have to keep chasing them manually.
 
 ## Install
 
-Add this repo in Valenced:
+1. Open Valenced and add this plugin repository:
 
-```
-https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/index.json
-```
+   `https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/index.json`
 
-Then find **VC Follow**, install it, and turn it on. The link is the plugin repo index, not a download page.
+2. Find **VC Follow**, install it, and enable it.
+3. Open the plugin settings and enter the Discord user ID you want to follow.
+4. Hit **Save and Follow**.
 
-## Set it up
+That's it. Your target ID is saved, so you shouldn't need to enter it again every time.
 
-Open the plugin settings and paste the person's Discord user ID, then press **Save and Follow**. The ID is saved, so you don't have to paste it every time.
+## How to use it
 
-You can also use these commands:
+You can manage following from the plugin settings, or use the commands:
 
-- `/vcf user_id:USER_ID` starts following that user.
-- `/unvcf` stops following.
+- `/vcf user_id:USER_ID` — start following a user.
+- `/unvcf` — stop following.
 
-It works across servers as long as Discord lets your account join the channel.
+Use the person's Discord **user ID**, not their display name or username.
 
-## What the status means
+## What it does
 
-The status tells you what the plugin is currently trying to do: checking the target's channel, asking Discord to join, waiting for a free spot, or waiting because you don't have Connect permission. A join request isn't treated as successful until Discord reports that you're in the target channel.
+- Tries to join the voice channel the person is currently in.
+- Keeps checking if they're in a full channel and retries when a spot may be available.
+- Notices when they move to another voice channel and follows their new channel.
+- Shows a status message so you can tell what it's doing.
 
-If you disconnect yourself, following pauses. Join any voice channel to resume it.
+## About the status
 
-## A couple of limits
+The status should reflect what VC Follow is doing right now. For example, it may say it's joining, waiting for a spot, waiting for the person to join voice, or connected.
 
-The plugin can't bypass channel permissions, server restrictions, or full-channel limits. If access or capacity changes, it checks again and tries when it can.
+A join attempt doesn't mean you've successfully joined. VC Follow treats it as connected only after Discord reports that you're in the same voice channel.
+
+If the status looks stuck or doesn't match what's happening in Discord, try disabling and re-enabling the plugin. If it keeps happening, report the status message along with what the followed user was doing.
+
+## A few things to know
+
+- VC Follow can only join channels your account is allowed to access.
+- It can't bypass **Connect** permissions, server restrictions, or channel user limits.
+- If you leave voice yourself, you may need to join a voice channel again for following to resume.
+
+## Repository
+
+Source code and updates are available here:
+
+https://github.com/LiFawaz/valenced-vc-follow
