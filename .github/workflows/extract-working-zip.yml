@@ -64,7 +64,7 @@ jobs:
               js = js[:-len(suffix)] + ")})();\nexport default __vcFollowModule;\n"
           elif js.endswith("})()})"):
               js = js[:-len("})()})")] + "})();\nexport default __vcFollowModule;\n"
-          elif not js.endswith("export default __vcFollowModule;\n"):
+          elif not js.endswith("export default __vcFollowModule;"):
               raise SystemExit("Unexpected JS wrapper ending; refusing an unverified rewrite.")
 
           source_path.write_text(js)
