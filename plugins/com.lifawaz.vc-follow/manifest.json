@@ -2,9 +2,9 @@
   "format": 1,
   "id": "com.lifawaz.vc-follow",
   "name": "VC Follow",
-  "description": "Follow a user between Discord voice channels with Configure settings, /vcf and /unvcf commands, immediate join retries, and manual-disconnect pause.",
+  "description": "Follow a user between Discord voice channels with Configure settings, /vcf and /unvcf commands, immediate join retries, and manual-disconnect pause that resumes when you join another voice channel.",
   "author": "Li Fawaz (https://github.com/LiFawaz)",
-  "version": "1.0.19",
+  "version": "1.0.20",
   "dependencies": {
     "valenced.api": {
       "version": ">=1 <2"
