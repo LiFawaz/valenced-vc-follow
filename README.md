@@ -10,18 +10,20 @@ Add this repository URL in Valenced's plugin repository settings:
 https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/index.json
 ```
 
-Then find **VC Follow**, install it, and enable it. Opening the URL in a browser only shows the repository data; it does not install the plugin.
+Find **VC Follow**, install it, and enable it. Opening the URL in a browser only displays repository data.
 
-## Use
+## Configure
 
-1. Enable Developer Mode in Discord and copy the user's ID.
-2. Run `/vcf user_id:USER_ID`.
-3. Run `/unvcf` to stop following.
+Open VC Follow's settings to enter a Discord user ID, follow or unfollow them, view the current follow status, and check recent plugin logs.
 
-Profile-menu options may also appear in supported builds.
+## Slash commands
+
+- `/vcf user_id:USER_ID` — follow a user.
+- `/unvcf` — stop following.
+
+These commands remain available alongside the settings page.
 
 ## Notes
 
-- Follows the user by Discord ID, including across servers.
-- You must have access to the destination server and permission to join its voice channel. This plugin does not bypass Discord restrictions.
-- If it fails, check Valenced logs for `[vc-follow]`.
+- Follows by Discord user ID, including across servers.
+- You still need access and permission to join the destination voice channel.
