@@ -44,7 +44,7 @@ jobs:
           if manifest.get("dist", {}).get("script") != "index.js":
               raise SystemExit("Manifest dist.script must be index.js.")
 
-          js = source_path.read_text()
+          js = source_path.read_text().rstrip()
           prefix = "(function(e){Object.defineProperty(e,Symbol.toStringTag,{value:`Module`});"
           if js.startswith(prefix):
               js = "const __vcFollowModule = (function(){" + js[len(prefix):]
