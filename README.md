@@ -1,29 +1,34 @@
 # VC Follow
 
-A Valenced plugin that follows a Discord user between voice channels.
+A small Valenced plugin that keeps up with someone in Discord voice chat.
 
 ## Install
 
-Add this repository URL in Valenced's plugin repository settings:
+Add this repo in Valenced:
 
 ```
 https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/index.json
 ```
 
-Find **VC Follow**, install it, and enable it. Opening the URL in a browser only displays repository data.
+Then find **VC Follow**, install it, and turn it on. The link is the plugin repo index, not a download page.
 
-## Configure
+## Set it up
 
-Open VC Follow's settings to enter a Discord user ID, follow or unfollow them, view the current follow status, and check recent plugin logs.
+Open the plugin settings and paste the person's Discord user ID, then press **Save and Follow**. The ID is saved, so you don't have to paste it every time.
 
-## Slash commands
+You can also use these commands:
 
-- `/vcf user_id:USER_ID` — follow a user.
-- `/unvcf` — stop following.
+- `/vcf user_id:USER_ID` starts following that user.
+- `/unvcf` stops following.
 
-These commands remain available alongside the settings page. Your configured user ID is saved.
+It works across servers as long as Discord lets your account join the channel.
 
-## Notes
+## What the status means
 
-- Follows by Discord user ID, including across servers.
-- You still need access and permission to join the destination voice channel.
+The status tells you what the plugin is currently trying to do: checking the target's channel, asking Discord to join, waiting for a free spot, or waiting because you don't have Connect permission. A join request isn't treated as successful until Discord reports that you're in the target channel.
+
+If you disconnect yourself, following pauses. Join any voice channel to resume it.
+
+## A couple of limits
+
+The plugin can't bypass channel permissions, server restrictions, or full-channel limits. If access or capacity changes, it checks again and tries when it can.
