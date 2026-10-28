@@ -21,7 +21,7 @@ Open VC Follow's settings to enter a Discord user ID, follow or unfollow them, v
 - `/vcf user_id:USER_ID` — follow a user.
 - `/unvcf` — stop following.
 
-These commands remain available alongside the settings page.
+These commands remain available alongside the settings page. Your configured user ID is saved.
 
 ## Notes
 
