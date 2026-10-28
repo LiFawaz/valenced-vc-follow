@@ -5,94 +5,16 @@
   "plugins": {
     "com.lifawaz.vc-follow": {
       "name": "VC Follow",
-      "description": "Follow a user between Discord voice channels with Configure settings, /vcf and /unvcf commands, immediate join retries, and manual-disconnect pause.",
+      "description": "Follow a user between Discord voice channels with Configure settings, /vcf and /unvcf commands, immediate join retries, and manual-disconnect pause that resumes when you join another voice channel.",
       "author": "Li Fawaz (https://github.com/LiFawaz)",
       "channels": {
-        "latest": "1.0.19"
+        "latest": "1.0.20"
       },
       "versions": {
-        "1.0.13": {
-          "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.13.zip",
-          "sha256": "55b9867fe5fec695c9790aa33f930dda70db6d209acc4b3bb6ede95676836399",
-          "size": 5034,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.0.14": {
-          "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.14.zip",
-          "sha256": "f2d5ea139b10ad043265a1406698c1e84ea238d9e5f0e9d9be41940e72e8daea",
-          "size": 14714,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.0.15": {
-          "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.15.zip",
-          "sha256": "3b0c8b3b7d5983d130a27dfeca732ee60c025de2b8b4e48b0ae51c6b8ab19b38",
-          "size": 14906,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.0.16": {
-          "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.16.zip",
-          "sha256": "20d2065d9c475ed611b5c0cd4447349a7fc76ba53065f86dae1def86e21899ec",
-          "size": 14829,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.0.17": {
-          "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.17.zip",
-          "sha256": "7d77917e83bb08b1355932d1f1236c1b301fce0c2741c56ec2a0f5f555c8bd12",
-          "size": 14808,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.0.18": {
-          "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.18.zip",
-          "sha256": "32bdb1e1d0fa7ee5e9210448485271b011742f7b413679abba62824ad3f64265",
-          "size": 14899,
-          "dependencies": {
-            "valenced.api": {
-              "version": ">=1 <2"
-            },
-            "discord": {
-              "version": "*"
-            }
-          }
-        },
-        "1.0.19": {
-          "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.19.zip",
-          "sha256": "94358e52c97ff0ca9f73972a7d2c59bf9bfc58629bd85260acd51d925af2bbde",
-          "size": 15756,
+        "1.0.20": {
+          "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.20.zip",
+          "sha256": "e879bd36bafc6292abcb44be63b9067f8624abaa1e12111f91de289123ca16d9",
+          "size": 5355,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
