@@ -12,6 +12,11 @@ on:
 permissions:
   contents: write
 
+# Serialize builds so parallel runs cannot overwrite the same ZIP/index or race on main.
+concurrency:
+  group: vc-follow-package-build
+  cancel-in-progress: false
+
 jobs:
   arrange-and-build:
     runs-on: ubuntu-latest
@@ -154,13 +159,16 @@ jobs:
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+users.noreply.github.com"
           git add plugins pool index.json
           if git diff --cached --quiet; then
             echo "No changes to commit."
-          else
-            git commit -m "Fix Valenced entry point and rebuild VC Follow package"
-            git push
+            exit 0
           fi
+          git commit -m "Build and publish VC Follow package"
+          # Rebase generated package commit if another legitimate commit landed on main.
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
 
 # Rebuild trigger: validation runs after this workflow completes.
