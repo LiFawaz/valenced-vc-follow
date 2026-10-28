@@ -11,7 +11,7 @@ A Valenced plugin that adds **Follow VC** to supported Discord user profile/cont
 
 3. Find **VC Follow** and install version `1.0.0`.
 
-The repository index points to the packaged plugin in `pool/com.lifawaz.vc-follow@1.0.0.zip` and includes its SHA-256 digest for integrity verification.
+The repository index points to the plugin bundle built with the official Valenced plugin CLI in `pool/com.lifawaz.vc-follow@1.0.0.zip` and includes its SHA-256 digest for integrity verification.
 
 ## Use
 
