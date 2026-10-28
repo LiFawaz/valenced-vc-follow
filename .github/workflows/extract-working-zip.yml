@@ -7,6 +7,7 @@ on:
       - "vc.follow.67.zip"
       - ".github/workflows/extract-working-zip.yml"
       - "plugins/com.lifawaz.vc-follow/manifest.json"
+      - "plugins/com.lifawaz.vc-follow/js/index.js"
 
 permissions:
   contents: write
