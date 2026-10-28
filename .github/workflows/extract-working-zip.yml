@@ -162,3 +162,5 @@ jobs:
             git commit -m "Fix Valenced entry point and rebuild VC Follow package"
             git push
           fi
+
+# Rebuild trigger: validation runs after this workflow completes.
