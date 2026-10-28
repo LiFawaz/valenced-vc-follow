@@ -8,13 +8,13 @@
       "description": "Follow a user between Discord voice channels, with a configurable target.",
       "author": "Li Fawaz (https://github.com/LiFawaz)",
       "channels": {
-        "latest": "1.0.8"
+        "latest": "1.0.9"
       },
       "versions": {
-        "1.0.8": {
-          "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.8.zip",
-          "sha256": "4847ea93dc48315c04b6d6f6ae17a9edd99b44f209c3cfd589395cc8d7efef74",
-          "size": 4911,
+        "1.0.9": {
+          "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.9.zip",
+          "sha256": "cc91b820b11b24e65de2ff76fedc2904a5b796703b5b441d05354e061741c694",
+          "size": 4910,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
