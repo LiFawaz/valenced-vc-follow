@@ -1,4 +1,4 @@
-name: Validate Valenced plugin
+name: Validate Valenced plugin package
 
 on:
   push:
@@ -10,54 +10,73 @@ permissions:
   contents: read
 
 jobs:
-  bundle:
+  validate-package:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out plugin source
+      - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Check manifest JSON
-        run: |
-          node -e 'const fs=require("fs"); const p="plugins/com.lifawaz.vc-follow/manifest.json"; const m=JSON.parse(fs.readFileSync(p,"utf8")); if(m.format!==1 || !m.id || !m.version || m.dist?.script!=="index.js" || !m.dependencies?.["valenced.api"]) process.exit(1); console.log("Manifest OK:", m.id, m.version)'
-
-      - name: Get official Valenced build template
-        run: git clone --depth 1 https://github.com/Valenced/valenced-plugin-template.git valenced-template
-
-      - name: Copy plugin into template
-        run: cp -R "plugins/com.lifawaz.vc-follow" "valenced-template/plugins/com.lifawaz.vc-follow"
-
-      - name: Install build dependencies
-        working-directory: valenced-template
-        run: bun install
-
-      - name: Build JavaScript bundle
-        working-directory: valenced-template
-        run: bun run build com.lifawaz.vc-follow
-
-      - name: Verify bundle exists
-        run: test -s "valenced-template/plugins/com.lifawaz.vc-follow/build/js/index.js"
-
-      - name: Assemble installable JS-only plugin ZIP
+      - name: Validate manifest, JavaScript, ZIP, and repository index
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p package
-          cp "plugins/com.lifawaz.vc-follow/manifest.json" package/manifest.json
-          cp "valenced-template/plugins/com.lifawaz.vc-follow/build/js/index.js" package/index.js
-          node -e 'const m=require("./package/manifest.json"); if(m.dist.script!=="index.js") process.exit(1);'
-          version="$(node -p 'require("./package/manifest.json").version')"
-          plugin_id="$(node -p 'require("./package/manifest.json").id')"
-          mkdir -p dist
-          (cd package && zip -q "../dist/${plugin_id}@${version}.zip" manifest.json index.js)
-          unzip -t "dist/${plugin_id}@${version}.zip"
+          node --check plugins/com.lifawaz.vc-follow/js/index.js
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          import hashlib
+          import json
+          import subprocess
+          import tempfile
 
-      - name: Upload installable ZIP
+          manifest_path = Path("plugins/com.lifawaz.vc-follow/manifest.json")
+          script_path = Path("plugins/com.lifawaz.vc-follow/js/index.js")
+          manifest = json.loads(manifest_path.read_text())
+          assert manifest.get("format") == 1, "manifest format must be 1"
+          assert manifest.get("id") == "com.lifawaz.vc-follow", "wrong plugin id"
+          assert manifest.get("version") == "1.0.0", "unexpected version"
+          assert manifest.get("dist", {}).get("script") == "index.js", "wrong script entry"
+          for dep in ("valenced.api", "discord"):
+              assert dep in manifest.get("dependencies", {}), f"missing dependency: {dep}"
+
+          artifact_name = f"{manifest['id']}@{manifest['version']}.zip"
+          artifact_path = Path("pool") / artifact_name
+          assert artifact_path.is_file(), f"missing installable artifact: {artifact_path}"
+          with ZipFile(artifact_path) as z:
+              names = set(z.namelist())
+              assert names == {"manifest.json", "index.js"}, f"unexpected ZIP files: {names}"
+              packed_manifest = json.loads(z.read("manifest.json"))
+              assert packed_manifest == manifest, "ZIP manifest differs from source manifest"
+              packed_js = z.read("index.js")
+              assert packed_js == script_path.read_bytes(), "ZIP JS differs from repository JS"
+              with tempfile.NamedTemporaryFile(suffix=".js") as f:
+                  f.write(packed_js)
+                  f.flush()
+                  subprocess.run(["node", "--check", f.name], check=True)
+
+          index = json.loads(Path("index.json").read_text())
+          assert index.get("format") == 1, "unsupported repository index format"
+          plugin = index.get("plugins", {}).get(manifest["id"])
+          assert plugin is not None, "plugin missing from index"
+          version = plugin.get("versions", {}).get(manifest["version"])
+          assert version is not None, "plugin version missing from index"
+          digest = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
+          assert version.get("sha256") == digest, "index SHA-256 does not match ZIP"
+          assert version.get("size") == artifact_path.stat().st_size, "index ZIP size mismatch"
+          assert version.get("url", "").endswith("/pool/" + artifact_name), "index URL mismatch"
+          assert plugin.get("channels", {}).get("latest") == manifest["version"], "latest channel mismatch"
+
+          print(f"Manifest OK: {manifest['id']} {manifest['version']}")
+          print("JavaScript syntax OK")
+          print("Install ZIP contents and embedded manifest OK")
+          print(f"SHA-256 OK: {digest}")
+          print("Valenced repository index OK")
+          PY
+
+      - name: Upload installable ZIP for convenience
         uses: actions/upload-artifact@v4
         with:
           name: com.lifawaz.vc-follow-installable-zip
-          path: dist/*.zip
+          path: pool/com.lifawaz.vc-follow@1.0.0.zip
           if-no-files-found: error
           retention-days: 30
