@@ -27,7 +27,7 @@ jobs:
           node - <<'NODE'
           const fs = require("fs");
           const m = JSON.parse(fs.readFileSync("plugins/com.lifawaz.vc-follow/manifest.json", "utf8"));
-          if (m.format !== 1 || m.id !== "com.lifawaz.vc-follow" || m.version !== "1.0.0" || m.dist?.script !== "index.js" || !m.dependencies?.["valenced.api"] || !m.dependencies?.discord) process.exit(1);
+          if (m.format !== 1 || m.id !== "com.lifawaz.vc-follow" || m.dist?.script !== "index.js" || !m.dependencies?.["valenced.api"] || !m.dependencies?.discord) process.exit(1);
           console.log("Manifest OK:", m.id, m.version);
           NODE
 
@@ -95,6 +95,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: com.lifawaz.vc-follow-installable-zip
-          path: pool/com.lifawaz.vc-follow@1.0.0.zip
+          path: pool/com.lifawaz.vc-follow@*.zip
           if-no-files-found: error
           retention-days: 30
