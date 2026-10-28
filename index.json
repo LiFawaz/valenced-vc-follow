@@ -5,16 +5,16 @@
   "plugins": {
     "com.lifawaz.vc-follow": {
       "name": "VC Follow",
-      "description": "Follow a user between Discord voice channels with Configure settings, /vcf and /unvcf commands, confirmed manual-disconnect pause/resume, and aggressive immediate-join retries.",
+      "description": "Follow a user between Discord voice channels with Configure settings, /vcf and /unvcf commands, manual disconnect detection across voice actions, and immediate-join retries.",
       "author": "Li Fawaz (https://github.com/LiFawaz)",
       "channels": {
-        "latest": "1.0.21"
+        "latest": "1.0.22"
       },
       "versions": {
-        "1.0.21": {
-          "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.21.zip",
-          "sha256": "296b329470bf36380d65509b6d4262841cc89cf96b77e6c64cca982245e923fb",
-          "size": 5499,
+        "1.0.22": {
+          "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.22.zip",
+          "sha256": "bd5a91af9069b49e3f3f177eff8bff1a7f29e55a2863825b8014aa44f457b8db",
+          "size": 5494,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
