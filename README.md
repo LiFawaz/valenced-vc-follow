@@ -9,9 +9,9 @@ A Valenced plugin that adds **Follow VC** to supported Discord user profile/cont
 
    `https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/index.json`
 
-3. Find **VC Follow** and install version `1.0.0`.
+3. Find **VC Follow** and install the latest version shown in the repository index (`1.0.1` at this release).
 
-The repository index points to the plugin bundle built with the official Valenced plugin CLI in `pool/com.lifawaz.vc-follow@1.0.0.zip` and includes its SHA-256 digest for integrity verification.
+The repository index points to the plugin bundle built with the official Valenced plugin CLI in `pool/com.lifawaz.vc-follow@1.0.1.zip` and includes its SHA-256 digest for integrity verification.
 
 ## Use
 
@@ -27,7 +27,7 @@ The repository index points to the plugin bundle built with the official Valence
 - `pool/com.lifawaz.vc-follow@1.0.0.zip` — installable artifact
 - `index.json` — Valenced repository index
 
-The GitHub Actions workflow extracts the uploaded nested ZIP, checks the manifest and JavaScript syntax, creates the installable ZIP, calculates its SHA-256 digest, and regenerates `index.json`.
+The GitHub Actions workflow converts the plugin entry point to ESM, builds it with the official Valenced plugin CLI, creates the installable ZIP, calculates its SHA-256 digest, and regenerates `index.json`.
 
 ## Validation notes
 
