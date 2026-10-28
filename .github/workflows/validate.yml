@@ -1,4 +1,4 @@
-name: Validate Valenced plugin package
+name: Validate Valenced VC Follow package
 
 on:
   push:
@@ -16,11 +16,39 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Validate manifest, JavaScript, ZIP, and repository index
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Validate manifest and source module syntax
         shell: bash
         run: |
           set -euo pipefail
-          node --check plugins/com.lifawaz.vc-follow/js/index.js
+          node --input-type=module --check < plugins/com.lifawaz.vc-follow/js/index.js
+          node - <<'NODE'
+          const fs = require("fs");
+          const m = JSON.parse(fs.readFileSync("plugins/com.lifawaz.vc-follow/manifest.json", "utf8"));
+          if (m.format !== 1 || m.id !== "com.lifawaz.vc-follow" || m.version !== "1.0.0" || m.dist?.script !== "index.js" || !m.dependencies?.["valenced.api"] || !m.dependencies?.discord) process.exit(1);
+          console.log("Manifest OK:", m.id, m.version);
+          NODE
+
+      - name: Get official Valenced build template
+        run: git clone --depth 1 https://github.com/Valenced/valenced-plugin-template.git valenced-template
+
+      - name: Copy plugin into template
+        run: cp -R plugins/com.lifawaz.vc-follow valenced-template/plugins/com.lifawaz.vc-follow
+
+      - name: Install build dependencies
+        working-directory: valenced-template
+        run: bun install
+
+      - name: Build with official Valenced plugin CLI
+        working-directory: valenced-template
+        run: bun run build com.lifawaz.vc-follow
+
+      - name: Verify built output, install ZIP, and repository index
+        shell: bash
+        run: |
+          set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
           from zipfile import ZipFile
@@ -29,48 +57,38 @@ jobs:
           import subprocess
           import tempfile
 
-          manifest_path = Path("plugins/com.lifawaz.vc-follow/manifest.json")
-          script_path = Path("plugins/com.lifawaz.vc-follow/js/index.js")
-          manifest = json.loads(manifest_path.read_text())
-          assert manifest.get("format") == 1, "manifest format must be 1"
-          assert manifest.get("id") == "com.lifawaz.vc-follow", "wrong plugin id"
-          assert manifest.get("version") == "1.0.0", "unexpected version"
-          assert manifest.get("dist", {}).get("script") == "index.js", "wrong script entry"
-          for dep in ("valenced.api", "discord"):
-              assert dep in manifest.get("dependencies", {}), f"missing dependency: {dep}"
+          root = Path(".")
+          manifest = json.loads((root / "plugins/com.lifawaz.vc-follow/manifest.json").read_text())
+          built = root / "valenced-template/plugins/com.lifawaz.vc-follow/build/js/index.js"
+          assert built.is_file() and built.stat().st_size > 0, "official build output is missing"
+          artifact = root / "pool" / f"{manifest['id']}@{manifest['version']}.zip"
+          assert artifact.is_file(), f"installable ZIP is missing: {artifact}"
 
-          artifact_name = f"{manifest['id']}@{manifest['version']}.zip"
-          artifact_path = Path("pool") / artifact_name
-          assert artifact_path.is_file(), f"missing installable artifact: {artifact_path}"
-          with ZipFile(artifact_path) as z:
-              names = set(z.namelist())
-              assert names == {"manifest.json", "index.js"}, f"unexpected ZIP files: {names}"
+          with ZipFile(artifact) as z:
+              assert set(z.namelist()) == {"manifest.json", "index.js"}, f"unexpected ZIP contents: {z.namelist()}"
               packed_manifest = json.loads(z.read("manifest.json"))
-              assert packed_manifest == manifest, "ZIP manifest differs from source manifest"
+              assert packed_manifest == manifest, "ZIP manifest differs from source"
               packed_js = z.read("index.js")
-              assert packed_js == script_path.read_bytes(), "ZIP JS differs from repository JS"
+              assert packed_js == built.read_bytes(), "ZIP JavaScript differs from official Valenced build"
               with tempfile.NamedTemporaryFile(suffix=".js") as f:
                   f.write(packed_js)
                   f.flush()
                   subprocess.run(["node", "--check", f.name], check=True)
 
-          index = json.loads(Path("index.json").read_text())
+          index = json.loads((root / "index.json").read_text())
           assert index.get("format") == 1, "unsupported repository index format"
           plugin = index.get("plugins", {}).get(manifest["id"])
-          assert plugin is not None, "plugin missing from index"
+          assert plugin, "plugin missing from repository index"
           version = plugin.get("versions", {}).get(manifest["version"])
-          assert version is not None, "plugin version missing from index"
-          digest = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
+          assert version, "plugin version missing from repository index"
+          digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
           assert version.get("sha256") == digest, "index SHA-256 does not match ZIP"
-          assert version.get("size") == artifact_path.stat().st_size, "index ZIP size mismatch"
-          assert version.get("url", "").endswith("/pool/" + artifact_name), "index URL mismatch"
+          assert version.get("size") == artifact.stat().st_size, "index ZIP size mismatch"
+          assert version.get("url", "").endswith("/pool/" + artifact.name), "index URL mismatch"
           assert plugin.get("channels", {}).get("latest") == manifest["version"], "latest channel mismatch"
-
-          print(f"Manifest OK: {manifest['id']} {manifest['version']}")
-          print("JavaScript syntax OK")
-          print("Install ZIP contents and embedded manifest OK")
-          print(f"SHA-256 OK: {digest}")
-          print("Valenced repository index OK")
+          print("Official Valenced build OK")
+          print("Install ZIP matches official build")
+          print("Repository index and SHA-256 OK:", digest)
           PY
 
       - name: Upload installable ZIP for convenience
