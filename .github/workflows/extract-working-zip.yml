@@ -6,6 +6,7 @@ on:
     paths:
       - "vc.follow.67.zip"
       - ".github/workflows/extract-working-zip.yml"
+      - "plugins/com.lifawaz.vc-follow/manifest.json"
 
 permissions:
   contents: write
