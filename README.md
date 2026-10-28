@@ -4,7 +4,7 @@ A simple plugin for Valenced that follows someone between Discord voice channels
 
 ## Install
 
-Current version: **1.0.15**.
+Current version: **1.0.17**.
 
 1. Open Valenced and add this plugin repository:
 
@@ -30,7 +30,7 @@ Use the person's Discord **user ID**, not their display name or username.
 - `/vcf user_id:USER_ID` — start following a user.
 - `/unvcf` — stop following.
 
-The settings component uses Valenced's React Native externals, with a fallback to the plugin API's React Native export.
+The Configure screen uses Valenced's actual React and React Native module exports, with plugin-API fallbacks.
 
 ## What it does
 

@@ -2,9 +2,9 @@
   "format": 1,
   "id": "com.lifawaz.vc-follow",
   "name": "VC Follow",
-  "description": "Follow a user between Discord voice channels. Restores Valenced plugin loading, settings, and /vcf and /unvcf commands.",
+  "description": "Follow a user between Discord voice channels with restored Configure settings and /vcf and /unvcf commands.",
   "author": "Li Fawaz (https://github.com/LiFawaz)",
-  "version": "1.0.16",
+  "version": "1.0.17",
   "dependencies": {
     "valenced.api": {
       "version": ">=1 <2"
