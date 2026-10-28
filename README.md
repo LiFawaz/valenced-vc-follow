@@ -4,7 +4,7 @@ A simple plugin for Valenced that follows someone between Discord voice channels
 
 ## Install
 
-Current version: **1.0.19**.
+Current version: **1.0.21**.
 
 1. Open Valenced and add this plugin repository:
 
@@ -60,8 +60,8 @@ Source code and updates are available here:
 
 https://github.com/LiFawaz/valenced-vc-follow
 
-## Follow and disconnect behavior (1.0.19)
+## Follow and disconnect behavior (1.0.21)
 
-- Saving a user or running `/vcf user_id:USER_ID` immediately attempts to join their current voice channel and retries briefly while Discord's voice state updates.
+- Saving a user or running `/vcf user_id:USER_ID` immediately attempts to join their current voice channel and retries aggressively while Discord's voice state updates.
 - Manually disconnecting pauses following; the plugin watches `selectVoiceChannel(null)` actions across matching action modules so a normal self-disconnect is not treated as a kick. Following stays enabled, and once you manually join another voice channel, it resumes and moves you to the target's current channel.
 - Status text reports the paused state and whether a join is being attempted or has completed.
