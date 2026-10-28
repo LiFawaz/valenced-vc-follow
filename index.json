@@ -13,7 +13,7 @@
       "versions": {
         "1.0.2": {
           "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.2.zip",
-          "sha256": "45e45587c16e6aaa6325e5ce880d64e46519e76b91f9410726fae9ef8eabb99f",
+          "sha256": "8fdab11eb03f6d6379f1d0cd7cc241f5cc7abd7ca4e5cce8b5006681534a9f40",
           "size": 4774,
           "dependencies": {
             "valenced.api": {
