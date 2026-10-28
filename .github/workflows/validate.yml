@@ -1,7 +1,9 @@
 name: Validate Valenced VC Follow package
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Arrange and build VC Follow package"]
+    types: [completed]
     branches: [main]
   pull_request:
   workflow_dispatch:
