@@ -1,0 +1,74 @@
+name: Extract working VC Follow package
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "vc.follow.67.zip"
+      - ".github/workflows/extract-working-zip.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  extract-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Extract nested plugin package safely
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          import io
+
+          outer_path = Path("vc.follow.67.zip")
+          if not outer_path.is_file():
+              raise SystemExit("vc.follow.67.zip was not found in the repository root.")
+
+          with ZipFile(outer_path) as outer:
+              candidates = [
+                  name for name in outer.namelist()
+                  if name.lower().endswith(".zip") and not name.endswith("/")
+              ]
+              if len(candidates) != 1:
+                  raise SystemExit(f"Expected exactly one nested ZIP; found: {candidates}")
+              inner_name = candidates[0]
+              inner_bytes = outer.read(inner_name)
+
+          output_zip = Path("dist/com.lifawaz.vc-follow@1.0.0.zip")
+          output_zip.parent.mkdir(parents=True, exist_ok=True)
+          output_zip.write_bytes(inner_bytes)
+
+          target = Path("working-package")
+          if target.exists():
+              import shutil
+              shutil.rmtree(target)
+          target.mkdir(parents=True)
+
+          with ZipFile(io.BytesIO(inner_bytes)) as inner:
+              for member in inner.infolist():
+                  destination = (target / member.filename).resolve()
+                  if target.resolve() not in destination.parents and destination != target.resolve():
+                      raise SystemExit(f"Unsafe path in package: {member.filename}")
+              inner.extractall(target)
+
+          print("Extracted package files:")
+          for path in sorted(target.rglob("*")):
+              if path.is_file():
+                  print(path)
+          PY
+
+      - name: Commit extracted package
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist working-package
+          if git diff --cached --quiet; then
+            echo "No extracted package changes to commit."
+          else
+            git commit -m "Extract working VC Follow package"
+            git push
+          fi
