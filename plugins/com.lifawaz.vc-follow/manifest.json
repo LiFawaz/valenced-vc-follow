@@ -4,7 +4,7 @@
   "name": "VC Follow",
   "description": "Follow a user between Discord voice channels, with a configurable target.",
   "author": "Li Fawaz (https://github.com/LiFawaz)",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "dependencies": {
     "valenced.api": {
       "version": ">=1 <2"
