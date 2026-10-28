@@ -42,7 +42,8 @@ If the status looks stuck or doesn't match what's happening in Discord, try disa
 
 - VC Follow can only join channels your account is allowed to access.
 - It can't bypass **Connect** permissions, server restrictions, or channel user limits.
-- If you leave voice yourself, you may need to join a voice channel again for following to resume.
+- If you disconnect yourself, following pauses; join any voice channel to resume.
+- If someone else disconnects or kicks you from voice, VC Follow keeps following and attempts to rejoin the target's current voice channel.
 
 ## Repository
 
