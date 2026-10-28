@@ -62,7 +62,7 @@ jobs:
           suffix = "),e})({});"
           if js.endswith(suffix):
               js = js[:-len(suffix)] + ")})();\nexport default __vcFollowModule;\n"
-          elif js.endswith("})()})":
+          elif js.endswith("})()})"):
               js = js[:-len("})()})")] + "})();\nexport default __vcFollowModule;\n"
           elif not js.endswith("export default __vcFollowModule;\n"):
               raise SystemExit("Unexpected JS wrapper ending; refusing an unverified rewrite.")
