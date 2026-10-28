@@ -1,4 +1,4 @@
-name: Arrange and validate VC Follow package
+name: Arrange and build VC Follow package
 
 on:
   workflow_dispatch:
@@ -11,13 +11,100 @@ permissions:
   contents: write
 
 jobs:
-  arrange-and-validate:
+  arrange-and-build:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Extract, arrange, validate, and package
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Extract original package and convert entry point
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          import json
+          import shutil
+          import tempfile
+
+          root = Path(".")
+          outer_path = root / "vc.follow.67.zip"
+          if not outer_path.is_file():
+              raise SystemExit("vc.follow.67.zip is missing from the repository root.")
+
+          with ZipFile(outer_path) as outer:
+              nested = [n for n in outer.namelist() if n.lower().endswith(".zip") and not n.endswith("/")]
+              if len(nested) != 1:
+                  raise SystemExit(f"Expected exactly one nested ZIP; found {nested}")
+              inner_bytes = outer.read(nested[0])
+
+          with tempfile.TemporaryDirectory() as tmp:
+              temp = Path(tmp)
+              inner_path = temp / "inner.zip"
+              inner_path.write_bytes(inner_bytes)
+              unpack = temp / "unpack"
+              unpack.mkdir()
+              with ZipFile(inner_path) as z:
+                  for item in z.infolist():
+                      target = (unpack / item.filename).resolve()
+                      if target != unpack.resolve() and unpack.resolve() not in target.parents:
+                          raise SystemExit(f"Unsafe path in uploaded ZIP: {item.filename}")
+                  z.extractall(unpack)
+
+              manifest_path = unpack / "manifest.json"
+              source_path = unpack / "index.js"
+              if not manifest_path.is_file() or not source_path.is_file():
+                  raise SystemExit(f"Expected manifest.json and index.js; found {[p.name for p in unpack.iterdir()]}")
+              manifest = json.loads(manifest_path.read_text())
+              if manifest.get("format") != 1 or manifest.get("id") != "com.lifawaz.vc-follow":
+                  raise SystemExit("Unexpected Valenced manifest format or plugin ID.")
+              if manifest.get("dist", {}).get("script") != "index.js":
+                  raise SystemExit("Manifest dist.script must be index.js.")
+
+              js = source_path.read_text()
+              prefix = "(function(e){Object.defineProperty(e,Symbol.toStringTag,{value:`Module`});"
+              if not js.startswith(prefix):
+                  raise SystemExit("The uploaded JS wrapper differed from the known package; refusing unsafe rewrite.")
+              js = "const __vcFollowModule = (function(){" + js[len(prefix):]
+              marker = "return e.default=plugin("
+              if js.count(marker) != 1:
+                  raise SystemExit("Expected exactly one wrapped default plugin entry point.")
+              js = js.replace(marker, "return plugin(", 1)
+              suffix = "),e})({});"
+              if not js.endswith(suffix):
+                  raise SystemExit("The uploaded JS wrapper ending differed from the known package.")
+              js = js[:-len(suffix)] + ")})();\nexport default __vcFollowModule;\n"
+
+              plugin_dir = root / "plugins/com.lifawaz.vc-follow"
+              js_dir = plugin_dir / "js"
+              js_dir.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(manifest_path, plugin_dir / "manifest.json")
+              (js_dir / "index.js").write_text(js)
+              old_ts = js_dir / "index.ts"
+              if old_ts.exists():
+                  old_ts.unlink()
+              print("Converted bundled wrapper into a real ESM default export.")
+          PY
+
+      - name: Get official Valenced build template
+        run: git clone --depth 1 https://github.com/Valenced/valenced-plugin-template.git valenced-template
+
+      - name: Copy plugin into template
+        run: cp -R plugins/com.lifawaz.vc-follow valenced-template/plugins/com.lifawaz.vc-follow
+
+      - name: Install build dependencies
+        working-directory: valenced-template
+        run: bun install
+
+      - name: Build with official Valenced plugin CLI
+        working-directory: valenced-template
+        run: bun run build com.lifawaz.vc-follow
+
+      - name: Package compiled plugin and regenerate repository index
         shell: bash
         run: |
           set -euo pipefail
@@ -30,133 +117,76 @@ jobs:
           import subprocess
           import tempfile
 
-          repo = Path(".")
-          outer_path = repo / "vc.follow.67.zip"
-          if not outer_path.is_file():
-              raise SystemExit("vc.follow.67.zip was not found in the repository root.")
+          root = Path(".")
+          manifest_path = root / "plugins/com.lifawaz.vc-follow/manifest.json"
+          source_manifest = json.loads(manifest_path.read_text())
+          build_js = root / "valenced-template/plugins/com.lifawaz.vc-follow/build/js/index.js"
+          if not build_js.is_file() or not build_js.stat().st_size:
+              raise SystemExit("Official Valenced build did not produce build/js/index.js.")
+          subprocess.run(["node", "--check", str(build_js)], check=True)
 
-          with ZipFile(outer_path) as outer:
-              candidates = [
-                  name for name in outer.namelist()
-                  if name.lower().endswith(".zip") and not name.endswith("/")
-              ]
-              if len(candidates) != 1:
-                  raise SystemExit(f"Expected exactly one nested ZIP; found: {candidates}")
-              inner_bytes = outer.read(candidates[0])
+          artifact_name = f"{source_manifest['id']}@{source_manifest['version']}.zip"
+          pool = root / "pool"
+          pool.mkdir(exist_ok=True)
+          artifact = pool / artifact_name
+          with tempfile.TemporaryDirectory() as tmp:
+              temp = Path(tmp)
+              package_manifest = temp / "manifest.json"
+              package_manifest.write_text(json.dumps(source_manifest, indent=2) + "\n")
+              with ZipFile(artifact, "w", ZIP_DEFLATED) as z:
+                  z.write(package_manifest, "manifest.json")
+                  z.write(build_js, "index.js")
+          with ZipFile(artifact) as z:
+              if set(z.namelist()) != {"manifest.json", "index.js"}:
+                  raise SystemExit(f"Unexpected artifact contents: {z.namelist()}")
+              if json.loads(z.read("manifest.json")) != source_manifest:
+                  raise SystemExit("Packaged manifest mismatch.")
+              bundled = z.read("index.js")
+              with tempfile.NamedTemporaryFile(suffix=".js") as f:
+                  f.write(bundled)
+                  f.flush()
+                  subprocess.run(["node", "--check", f.name], check=True)
 
-          with tempfile.TemporaryDirectory() as temp_dir:
-              temp = Path(temp_dir)
-              inner_zip = temp / "inner.zip"
-              inner_zip.write_bytes(inner_bytes)
-              with ZipFile(inner_zip) as archive:
-                  names = set(archive.namelist())
-                  if "manifest.json" not in names or "index.js" not in names:
-                      raise SystemExit(
-                          "The inner package must contain manifest.json and index.js; "
-                          f"found: {sorted(names)}"
-                      )
-                  for member in archive.infolist():
-                      destination = (temp / "unpacked" / member.filename).resolve()
-                      root = (temp / "unpacked").resolve()
-                      if destination != root and root not in destination.parents:
-                          raise SystemExit(f"Unsafe path in package: {member.filename}")
-                  archive.extractall(temp / "unpacked")
-              package_dir = temp / "unpacked"
-              manifest = json.loads((package_dir / "manifest.json").read_text())
-              if manifest.get("format") != 1:
-                  raise SystemExit("Unsupported manifest format.")
-              if manifest.get("id") != "com.lifawaz.vc-follow":
-                  raise SystemExit(f"Unexpected plugin ID: {manifest.get('id')}")
-              if manifest.get("version") != "1.0.0":
-                  raise SystemExit(f"Unexpected plugin version: {manifest.get('version')}")
-              deps = manifest.get("dependencies", {})
-              for required in ("valenced.api", "discord"):
-                  if required not in deps:
-                      raise SystemExit(f"Missing required dependency: {required}")
-              script = package_dir / "index.js"
-              subprocess.run(["node", "--check", str(script)], check=True)
-
-              plugin_dir = repo / "plugins/com.lifawaz.vc-follow"
-              js_dir = plugin_dir / "js"
-              js_dir.mkdir(parents=True, exist_ok=True)
-              shutil.copy2(package_dir / "manifest.json", plugin_dir / "manifest.json")
-              shutil.copy2(script, js_dir / "index.js")
-
-              # The original TypeScript scaffold is not the code from the uploaded
-              # package. Remove it to prevent ambiguous entry-point selection.
-              old_ts = js_dir / "index.ts"
-              if old_ts.exists():
-                  old_ts.unlink()
-              old_tsconfig = plugin_dir / "tsconfig.json"
-              if old_tsconfig.exists():
-                  old_tsconfig.unlink()
-
-              # Create the installable ZIP with the exact expected top-level files.
-              pool = repo / "pool"
-              pool.mkdir(exist_ok=True)
-              artifact_name = f"{manifest['id']}@{manifest['version']}.zip"
-              artifact = pool / artifact_name
-              with ZipFile(artifact, "w", ZIP_DEFLATED) as out:
-                  out.write(plugin_dir / "manifest.json", "manifest.json")
-                  out.write(js_dir / "index.js", "index.js")
-
-              # Re-open the final artifact and validate its manifest and entry point.
-              with ZipFile(artifact) as check:
-                  if set(check.namelist()) != {"manifest.json", "index.js"}:
-                      raise SystemExit(f"Unexpected package contents: {check.namelist()}")
-                  packaged_manifest = json.loads(check.read("manifest.json"))
-                  if packaged_manifest != manifest:
-                      raise SystemExit("Packaged manifest does not match source manifest.")
-                  packaged_script = temp / "packaged-index.js"
-                  packaged_script.write_bytes(check.read("index.js"))
-                  subprocess.run(["node", "--check", str(packaged_script)], check=True)
-
-              artifact_bytes = artifact.read_bytes()
-              sha256 = hashlib.sha256(artifact_bytes).hexdigest()
-              base = "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main"
-              index = {
-                  "format": 1,
-                  "name": "LiFawaz VC Follow",
-                  "description": "Valenced plugin repository for following a user between Discord voice channels.",
-                  "plugins": {
-                      manifest["id"]: {
-                          "name": manifest.get("name", ""),
-                          "description": manifest.get("description", ""),
-                          "author": manifest.get("author", ""),
-                          "channels": {"latest": manifest["version"]},
-                          "versions": {
-                              manifest["version"]: {
-                                  "url": f"{base}/pool/{artifact_name}",
-                                  "sha256": sha256,
-                                  "size": len(artifact_bytes),
-                                  "dependencies": manifest["dependencies"],
-                              }
-                          },
-                      }
-                  },
-              }
-              (repo / "index.json").write_text(json.dumps(index, indent=2) + "\n")
-              print(f"Validated {manifest['id']}@{manifest['version']}")
-              print(f"JavaScript syntax: OK")
-              print(f"Package: {artifact} ({len(artifact_bytes)} bytes)")
-              print(f"SHA-256: {sha256}")
-              print("Repository index regenerated.")
-
-          # Remove temporary artifacts created by the previous workflow revision.
-          shutil.rmtree(repo / "working-package", ignore_errors=True)
-          shutil.rmtree(repo / "dist", ignore_errors=True)
+          artifact_bytes = artifact.read_bytes()
+          digest = hashlib.sha256(artifact_bytes).hexdigest()
+          base = "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main"
+          index = {
+              "format": 1,
+              "name": "LiFawaz VC Follow",
+              "description": "Valenced plugin repository for following a user between Discord voice channels.",
+              "plugins": {
+                  source_manifest["id"]: {
+                      "name": source_manifest.get("name", ""),
+                      "description": source_manifest.get("description", ""),
+                      "author": source_manifest.get("author", ""),
+                      "channels": {"latest": source_manifest["version"]},
+                      "versions": {
+                          source_manifest["version"]: {
+                              "url": f"{base}/pool/{artifact_name}",
+                              "sha256": digest,
+                              "size": len(artifact_bytes),
+                              "dependencies": source_manifest["dependencies"],
+                          }
+                      },
+                  }
+              },
+          }
+          (root / "index.json").write_text(json.dumps(index, indent=2) + "\n")
+          print(f"Official Valenced build succeeded: {source_manifest['id']}@{source_manifest['version']}")
+          print(f"Install artifact: {artifact} ({len(artifact_bytes)} bytes)")
+          print(f"SHA-256: {digest}")
           PY
 
-      - name: Commit arranged files
+      - name: Commit built plugin files
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A plugins pool index.json working-package dist
+          git add plugins pool index.json
           if git diff --cached --quiet; then
-            echo "No repository changes to commit."
+            echo "No changes to commit."
           else
-            git commit -m "Arrange and validate VC Follow plugin package"
+            git commit -m "Fix Valenced entry point and rebuild VC Follow package"
             git push
           fi
