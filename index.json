@@ -8,13 +8,26 @@
       "description": "Follow a user between Discord voice channels.",
       "author": "Li Fawaz (https://github.com/LiFawaz)",
       "channels": {
-        "latest": "1.0.2"
+        "latest": "1.0.3"
       },
       "versions": {
         "1.0.2": {
           "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.2.zip",
           "sha256": "addd7357361ea496a6ba3887e0e76109e1fa5061b5bd3227d9bd27e0140b4e4c",
           "size": 4375,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        },
+        "1.0.3": {
+          "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.3.zip",
+          "sha256": "",
+          "size": 0,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
