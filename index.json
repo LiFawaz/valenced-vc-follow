@@ -1,0 +1,30 @@
+{
+  "format": 1,
+  "name": "LiFawaz VC Follow",
+  "description": "Valenced plugin repository for following a user between Discord voice channels.",
+  "plugins": {
+    "com.lifawaz.vc-follow": {
+      "name": "VC Follow",
+      "description": "Follow a user between Discord voice channels.",
+      "author": "Li Fawaz (https://github.com/LiFawaz)",
+      "channels": {
+        "latest": "1.0.0"
+      },
+      "versions": {
+        "1.0.0": {
+          "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.0.zip",
+          "sha256": "f975bab9f002c2ae8789efdae4bcc98f7f5677cd9825d5874023ead82946184c",
+          "size": 3814,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    }
+  }
+}
