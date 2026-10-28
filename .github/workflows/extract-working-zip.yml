@@ -20,74 +20,44 @@ jobs:
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Extract original package and convert entry point
+      - name: Convert the checked-in plugin entry point to ESM
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          from zipfile import ZipFile
           import json
-          import shutil
-          import tempfile
 
-          root = Path(".")
-          outer_path = root / "vc.follow.67.zip"
-          if not outer_path.is_file():
-              raise SystemExit("vc.follow.67.zip is missing from the repository root.")
+          plugin_dir = Path("plugins/com.lifawaz.vc-follow")
+          manifest_path = plugin_dir / "manifest.json"
+          source_path = plugin_dir / "js/index.js"
+          manifest = json.loads(manifest_path.read_text())
+          if manifest.get("format") != 1 or manifest.get("id") != "com.lifawaz.vc-follow":
+              raise SystemExit("Unexpected Valenced manifest format or plugin ID.")
+          if manifest.get("dist", {}).get("script") != "index.js":
+              raise SystemExit("Manifest dist.script must be index.js.")
 
-          with ZipFile(outer_path) as outer:
-              nested = [n for n in outer.namelist() if n.lower().endswith(".zip") and not n.endswith("/")]
-              if len(nested) != 1:
-                  raise SystemExit(f"Expected exactly one nested ZIP; found {nested}")
-              inner_bytes = outer.read(nested[0])
-
-          with tempfile.TemporaryDirectory() as tmp:
-              temp = Path(tmp)
-              inner_path = temp / "inner.zip"
-              inner_path.write_bytes(inner_bytes)
-              unpack = temp / "unpack"
-              unpack.mkdir()
-              with ZipFile(inner_path) as z:
-                  for item in z.infolist():
-                      target = (unpack / item.filename).resolve()
-                      if target != unpack.resolve() and unpack.resolve() not in target.parents:
-                          raise SystemExit(f"Unsafe path in uploaded ZIP: {item.filename}")
-                  z.extractall(unpack)
-
-              manifest_path = unpack / "manifest.json"
-              source_path = unpack / "index.js"
-              if not manifest_path.is_file() or not source_path.is_file():
-                  raise SystemExit(f"Expected manifest.json and index.js; found {[p.name for p in unpack.iterdir()]}")
-              manifest = json.loads(manifest_path.read_text())
-              if manifest.get("format") != 1 or manifest.get("id") != "com.lifawaz.vc-follow":
-                  raise SystemExit("Unexpected Valenced manifest format or plugin ID.")
-              if manifest.get("dist", {}).get("script") != "index.js":
-                  raise SystemExit("Manifest dist.script must be index.js.")
-
-              js = source_path.read_text()
-              prefix = "(function(e){Object.defineProperty(e,Symbol.toStringTag,{value:`Module`});"
-              if not js.startswith(prefix):
-                  raise SystemExit("The uploaded JS wrapper differed from the known package; refusing unsafe rewrite.")
+          js = source_path.read_text()
+          prefix = "(function(e){Object.defineProperty(e,Symbol.toStringTag,{value:`Module`});"
+          if js.startswith(prefix):
               js = "const __vcFollowModule = (function(){" + js[len(prefix):]
-              marker = "return e.default=plugin("
+          elif not js.startswith("const __vcFollowModule = (function(){"):
+              raise SystemExit("Unexpected JS wrapper; refusing an unverified rewrite.")
+
+          marker = "return e.default=plugin("
+          if marker in js:
               if js.count(marker) != 1:
                   raise SystemExit("Expected exactly one wrapped default plugin entry point.")
               js = js.replace(marker, "return plugin(", 1)
-              suffix = "),e})({});"
-              if not js.endswith(suffix):
-                  raise SystemExit("The uploaded JS wrapper ending differed from the known package.")
-              js = js[:-len(suffix)] + ")})();\nexport default __vcFollowModule;\n"
 
-              plugin_dir = root / "plugins/com.lifawaz.vc-follow"
-              js_dir = plugin_dir / "js"
-              js_dir.mkdir(parents=True, exist_ok=True)
-              shutil.copy2(manifest_path, plugin_dir / "manifest.json")
-              (js_dir / "index.js").write_text(js)
-              old_ts = js_dir / "index.ts"
-              if old_ts.exists():
-                  old_ts.unlink()
-              print("Converted bundled wrapper into a real ESM default export.")
+          suffix = "),e})({});"
+          if js.endswith(suffix):
+              js = js[:-len(suffix)] + ")})();\nexport default __vcFollowModule;\n"
+          elif not js.endswith("export default __vcFollowModule;\n"):
+              raise SystemExit("Unexpected JS wrapper ending; refusing an unverified rewrite.")
+
+          source_path.write_text(js)
+          print("Converted source to a real ESM default export.")
           PY
 
       - name: Get official Valenced build template
