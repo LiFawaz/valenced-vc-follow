@@ -1,20 +1,34 @@
-# VC Follow (Valenced)
+# VC Follow for Valenced
 
-A clean Valenced-format port project for LiFawaz's original VC Follow Revenge plugin.
+A Valenced plugin that adds **Follow VC** to supported Discord user profile/context menus and registers the `/vcf` and `/unvcf` commands.
 
-## Status
+## Install from this repository
 
-This repository currently contains a Valenced-format manifest and a lifecycle scaffold. The old implementation depends on Vendetta-specific internals for voice-state lookup and channel navigation; those imports cannot be copied into Valenced as-is. The actual follow/navigation adapter is not marked complete until its APIs are verified against the current Valenced release.
+1. Open Valenced's plugin repository settings.
+2. Add this repository index URL:
 
-## Source layout
+   `https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/index.json`
 
-- `plugins/com.lifawaz.vc-follow/manifest.json` — Valenced plugin manifest
-- `plugins/com.lifawaz.vc-follow/js/index.ts` — JS entry point
+3. Find **VC Follow** and install version `1.0.0`.
 
-## Build
+The repository index points to the packaged plugin in `pool/com.lifawaz.vc-follow@1.0.0.zip` and includes its SHA-256 digest for integrity verification.
 
-This source is laid out for the official [Valenced plugin template](https://github.com/Valenced/valenced-plugin-template). Copy the plugin folder into that template, install its dependencies, and run its plugin build task. A packaged ZIP is not committed yet.
+## Use
 
-## Compatibility
+- Use `/vcf user_id:<Discord user ID>` to follow a user.
+- Use `/unvcf` to stop following.
+- Where Valenced exposes the supported user context-menu exports, use **Follow VC** / **Stop following VC** from the user's profile/context menu.
+- The plugin checks connection permission before requesting a channel join and reports when Discord rejects a join request. It does not bypass Discord permissions or server restrictions.
 
-The port will use supported channel navigation and respect Discord's permission checks. It will not bypass server restrictions or rely on undocumented private APIs.
+## Source and packaging
+
+- `plugins/com.lifawaz.vc-follow/manifest.json` — plugin manifest
+- `plugins/com.lifawaz.vc-follow/js/index.js` — JavaScript package source
+- `pool/com.lifawaz.vc-follow@1.0.0.zip` — installable artifact
+- `index.json` — Valenced repository index
+
+The GitHub Actions workflow extracts the uploaded nested ZIP, checks the manifest and JavaScript syntax, creates the installable ZIP, calculates its SHA-256 digest, and regenerates `index.json`.
+
+## Validation notes
+
+The workflow validates package structure, required dependencies, the artifact's embedded manifest, and JavaScript syntax. A syntax/package check cannot guarantee runtime compatibility across every Valenced/Discord release; after installing, test following and stopping in a test server and review the `[vc-follow]` console messages if the host API has changed.
