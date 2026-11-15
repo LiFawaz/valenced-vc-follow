@@ -5,16 +5,16 @@
   "plugins": {
     "com.lifawaz.vc-follow": {
       "name": "VC Follow",
-      "description": "Follow a Discord user between voice channels, immediately join their current channel, and pause on disconnect until a new voice connection is confirmed.",
+      "description": "Follow a Discord user between voice channels, attempt an immediate join with /vcf, and pause on manual disconnect until a different voice connection is confirmed.",
       "author": "Li Fawaz (https://github.com/LiFawaz)",
       "channels": {
-        "latest": "1.0.27"
+        "latest": "1.0.28"
       },
       "versions": {
-        "1.0.27": {
-          "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.27.zip",
-          "sha256": "88d85a9f143e965f338127c7ae6adc5538ece76714104321cd57c31e59a4029b",
-          "size": 5628,
+        "1.0.28": {
+          "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.28.zip",
+          "sha256": "9e819e5402ad192b53eac0838133b6dd9dac74e71648cb014857fbd384f8613c",
+          "size": 5957,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
