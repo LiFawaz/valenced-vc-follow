@@ -8,13 +8,13 @@
       "description": "Follow a user between Discord voice channels with Configure settings, /vcf and /unvcf commands, manual disconnect detection with recurring action scans, and immediate-join retries.",
       "author": "Li Fawaz (https://github.com/LiFawaz)",
       "channels": {
-        "latest": "1.0.23"
+        "latest": "1.0.24"
       },
       "versions": {
-        "1.0.23": {
-          "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.23.zip",
-          "sha256": "08061c69c2e582bbc46e242bc0369a65ec4cd16447108e7a8bef2a444e508a3b",
-          "size": 5521,
+        "1.0.24": {
+          "url": "https://raw.githubusercontent.com/LiFawaz/valenced-vc-follow/main/pool/com.lifawaz.vc-follow@1.0.24.zip",
+          "sha256": "a2b7492c150f2d11a897d42fc003c824f97f11a4cefea5b29d2fd384422d97ce",
+          "size": 5593,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
