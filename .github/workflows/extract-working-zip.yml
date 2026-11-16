@@ -162,7 +162,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: vc-follow-test-zip
-          path: pool/com.lifawaz.vc-follow@1.0.29.zip
+          path: pool/com.lifawaz.vc-follow@1.0.30.zip
           if-no-files-found: error
           retention-days: 7
 
