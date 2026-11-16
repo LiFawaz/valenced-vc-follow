@@ -2,9 +2,9 @@
   "format": 1,
   "id": "com.lifawaz.vc-follow",
   "name": "VC Follow",
-  "description": "Follow a Discord user between voice channels, attempt an immediate join with /vcf, recover from unexpected voice disconnects, and pause on manual disconnect.",
+  "description": "Follow a Discord user between voice channels, retry unexpected connection failures without a fixed attempt cap, wait for channel capacity, recheck Connect permissions, and pause on manual disconnect.",
   "author": "Li Fawaz (https://github.com/LiFawaz)",
-  "version": "1.0.29",
+  "version": "1.0.30",
   "dependencies": {
     "valenced.api": {
       "version": ">=1 <2"
